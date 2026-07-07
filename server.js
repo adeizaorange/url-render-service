@@ -1,6 +1,7 @@
 const express = require('express');
 const { chromium } = require('playwright');
 const Vibrant = require('node-vibrant');
+const sharp = require('sharp');
 
 const app = express();
 app.use(express.json());
@@ -44,8 +45,22 @@ app.post('/extract-color', async (req, res) => {
   if (!image_url) return res.status(400).json({ error: 'image_url is required' });
 
   try {
-    const palette = await Vibrant.from(image_url).getPalette();
+    const imageResponse = await fetch(image_url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+      }
+    });
 
+    if (!imageResponse.ok) throw new Error(`Image fetch failed: ${imageResponse.status}`);
+
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const rawBuffer = Buffer.from(arrayBuffer);
+
+    // Normalize ANY input format (webp, svg, avif, gif, whatever) to PNG
+    // so node-vibrant always gets something it can read reliably.
+    const pngBuffer = await sharp(rawBuffer).png().toBuffer();
+
+    const palette = await Vibrant.from(pngBuffer).getPalette();
     const toHex = (swatch) => swatch ? swatch.getHex() : null;
 
     return res.json({
@@ -55,7 +70,6 @@ app.post('/extract-color', async (req, res) => {
       status: 'ok'
     });
   } catch (err) {
-    // Common failure: image_url isn't a real image, or fetch failed
     return res.json({
       primary: '#2c3e50',
       secondary: '#7f8c8d',
@@ -65,7 +79,6 @@ app.post('/extract-color', async (req, res) => {
     });
   }
 });
-
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 const PORT = process.env.PORT || 3000;
