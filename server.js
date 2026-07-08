@@ -21,20 +21,33 @@ app.post('/render', async (req, res) => {
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
     });
+
     const page = await context.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    // Cloudflare's JS challenge needs a few seconds to resolve and redirect.
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    if (wait_ms) await page.waitForTimeout(wait_ms);
-    const html = await page.content();
-    const finalUrl = page.url();
-    await browser.close();
-    return res.json({ html, final_url: finalUrl, status: 'ok' });
+
+let lastErr;
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    lastErr = null;
+    break;
   } catch (err) {
-    if (browser) await browser.close();
-    return res.status(500).json({ error: err.message, status: 'failed' });
+    lastErr = err;
+    if (attempt < 3) await page.waitForTimeout(2000 * attempt);
   }
-});
+}
+
+if (lastErr) {
+  if (browser) await browser.close();
+  return res.status(500).json({ error: lastErr.message, status: 'failed' });
+}
+
+// Cloudflare's JS challenge needs a few seconds to resolve and redirect.
+await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+if (wait_ms) await page.waitForTimeout(wait_ms);
+const html = await page.content();
+const finalUrl = page.url();
+await browser.close();
+return res.json({ html, final_url: finalUrl, status: 'ok' });
 
 app.post('/extract-color', async (req, res) => {
   if (AUTH_TOKEN && req.headers['x-auth-token'] !== AUTH_TOKEN) {
