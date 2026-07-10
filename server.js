@@ -200,6 +200,7 @@ await page.evaluate(({ sel, val }) => {
     await browser.close();
     return res.json({
       username,
+      password,
       success,
       final_url: finalUrl,
       status: 'ok'
