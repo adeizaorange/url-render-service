@@ -148,8 +148,25 @@ app.post('/login-check', async (req, res) => {
       return res.status(500).json({ username, success: false, error: lastErr.message, status: 'failed' });
     }
 
-    await page.fill(username_selector, username);
-    await page.fill(password_selector, password);
+    await page.evaluate(({ sel, val }) => {
+  const el = document.querySelector(sel);
+  if (el) {
+    el.removeAttribute('readonly');
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}, { sel: username_selector, val: username });
+
+await page.evaluate(({ sel, val }) => {
+  const el = document.querySelector(sel);
+  if (el) {
+    el.removeAttribute('readonly');
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}, { sel: password_selector, val: password });
 
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
