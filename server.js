@@ -168,18 +168,18 @@ await page.evaluate(({ sel, val }) => {
   }
 }, { sel: password_selector, val: password });
 
-    // await Promise.all([
-    //   page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
-    //   page.click(submit_selector)
-    // ]);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null),
+      page.click(submit_selector)
+    ]);
 
-    const frames = page.frames();
-    const debugHtml = await page.content();
-    return res.json({
-      frame_count: frames.length,
-      frame_urls: frames.map(f => f.url()),
-      debug_html: debugHtml.substring(0, 8000)
-    });
+    // const frames = page.frames();
+    // const debugHtml = await page.content();
+    // return res.json({
+    //   frame_count: frames.length,
+    //   frame_urls: frames.map(f => f.url()),
+    //   debug_html: debugHtml.substring(0, 8000)
+    // });
 
     if (wait_ms) await page.waitForTimeout(wait_ms);
 
